@@ -1,0 +1,16 @@
+<body>
+  <form method="POST">
+    <label for="site-search">Search the site:</label>
+  <input type="search" id="site-search" name="q"
+         aria-label="Search through site content">
+
+  <button>Search</button>
+  <br>
+  <br>
+</form>
+
+    {% for e in mylist %}
+        <a href={{e}}> {{e}} <a>
+        <br>
+    {% endfor %}
+</body>
