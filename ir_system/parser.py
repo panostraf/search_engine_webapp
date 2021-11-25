@@ -18,63 +18,67 @@ import numpy as np
 pd.set_option('display.max_columns', None)
 # nltk.download('stopwords')
 from ir_system.functions import *
+import pickle
+from scipy.sparse import csr_matrix
+import scipy
 
 path = "./data/scrapped_articles_new.xml"
 query = "phone with large ram"
 
 
-class Preprocessing:
-    def __init__(self,file):
-        try:
-            self.file = open(file).read()
-        except UnicodeDecodeError:
-            try:
-                self.file = open(file,encoding="cp1252").read()
+# class Preprocessing:
+#     def __init__(self,file):
+#         try:
+#             self.file = open(file).read()
+#         except UnicodeDecodeError:
+#             try:
+#                 self.file = open(file,encoding="cp1252").read()
         
-            except UnicodeDecodeError:
-                self.file = open(file,encoding="utf-8").read()
-            self.documents = defaultdict(lambda: defaultdict(dict()))
+#             except UnicodeDecodeError:
+#                 self.file = open(file,encoding="utf-8").read()
+#             self.documents = defaultdict(lambda: defaultdict(dict()))
         
-        self.documents = defaultdict(lambda: defaultdict(dict()))
+#         self.documents = defaultdict(lambda: defaultdict(dict()))
 
     
     
-    def parser(self):
-        soup = BeautifulSoup(self.file,'lxml')
-        articles = soup.find_all("article")
+#     def parser(self):
+#         soup = BeautifulSoup(self.file,'lxml')
+#         articles = soup.find_all("article")
         
-        i = 0
-        for article in articles:
-            i+=1
-            article_name = "article" + str(i)
-            self.documents[article_name] = dict(url = article.find_all("url")[0].get_text(),
-                                            title = article.find_all("title")[0].get_text(),
-                                            content = article.find_all("content")[0].get_text())
+#         i = 0
+#         for article in articles:
+#             i+=1
+#             article_name = "article" + str(i)
+#             self.documents[article_name] = dict(url = article.find_all("url")[0].get_text(),
+#                                             title = article.find_all("title")[0].get_text(),
+#                                             content = article.find_all("content")[0].get_text())
 
-    @staticmethod
-    def transform_to_df(documents):
-        df = pd.DataFrame.from_dict(dict(documents),orient='index')
-        df.drop_duplicates(subset=['url'],inplace=True,keep="first")
-        df.drop_duplicates(subset=['content'],inplace=True,keep="first")
-        df.drop_duplicates(subset=['title'],inplace=True,keep="first")
-        df.reset_index(inplace=True)
-        return df
+#     @staticmethod
+#     def transform_to_df(documents):
+#         df = pd.DataFrame.from_dict(dict(documents),orient='index')
+#         df.drop_duplicates(subset=['url'],inplace=True,keep="first")
+#         df.drop_duplicates(subset=['content'],inplace=True,keep="first")
+#         df.drop_duplicates(subset=['title'],inplace=True,keep="first")
+#         df.reset_index(inplace=True)
+#         return df
 
             
 
-def words(row):
+# def words(row):
 
-    # print(row['article'])
-    # print(row['content'])
-    words = [word.lower() for word in word_tokenize(row['content']) if (word.lower() not in stopwords.words('english')) and (word.lower().isalnum())]
-    words = []
+#     # print(row['article'])
+#     # print(row['content'])
+#     words = [word.lower() for word in word_tokenize(row['content']) if (word.lower() not in stopwords.words('english')) and (word.lower().isalnum())]
+#     words = []
     
-    return words
+#     return words
 
-def vectorizer(dataset):
-    vectorizer = TfidfVectorizer()
-    X = vectorizer.fit_transform(dataset)
-    return X,vectorizer
+# def vectorizer(dataset):
+#     vectorizer = TfidfVectorizer()
+#     X = vectorizer.fit_transform(dataset)
+    
+#     return X,vectorizer
 
 def calculate_similarity(X, vectorizor, query, top_k=20):
     """ Vectorizes the `query` via `vectorizor` and calculates the cosine similarity of
@@ -82,6 +86,7 @@ def calculate_similarity(X, vectorizor, query, top_k=20):
 
     # Vectorize the query to the same length as documents
     query_vec = vectorizor.transform(query)
+    print(query_vec)
     # Compute the cosine similarity between query_vec and all the documents
     cosine_similarities = cosine_similarity(X,query_vec).flatten()
     # Sort the similar documents from the most similar to less similar and return the indices
@@ -135,10 +140,52 @@ class TFIDF:
         self.df = df
         self.query = [query]
 
-        
 
-    def tfidf_vectorizer(self):
-        X,vectors = self.vec_creator(self.df['content'])
+    # def tfidf_vectorizer(self):
+    #     X,vectors = self.vec_creator(self.df['content'])
+    #     scipy.sparse.save_npz('data/sparse_matrix.npz', X)#.todense())
+    #     print(vectors)
+    #     exit(-1)
+    #     # with open('vectorizer.pk', 'wb') as f:
+    #     #     pickle.dump(vectorizer, f)
+    #     # f.close()
+    #     print('------X-------')
+    #     print(X)
+    #     print("----VECTORS----")
+    #     print(vectors)
+    #     sim_vecs,cosine_similarities = self.calculate_similarity(X,vectors,self.query)
+    #     output = self.df[self.df.index.isin(sim_vecs)]
+    #     output['content'] = output['content'].apply(lambda x: x.replace("\n", " ").replace("-",' ').replace("_"," "))
+    #     # output['similarities'] = cosine_similarities
+    #     print('------x to array-------')
+    #     print(X.toarray())
+        
+        
+    #     print("X type:", type(X))
+    #     print("vectors type:",type(vectors))
+    #     return output
+
+    # def tfidf_vectorizer2(self):
+    #     X = scipy.sparse.load_npz('data/sparse_matrix.npz')
+    #     vectors = pickle.load(open("vectorizer.pk", 'rb'))
+    #     print(type(vectors))
+    #     print(X)
+    #     print("calculating similarity")
+    #     sim_vecs,cosine_similarities = self.calculate_similarity(X,vectors,self.query)
+    #     output = self.df[self.df.index.isin(sim_vecs)]
+    #     output['content'] = output['content'].apply(lambda x: x.replace("\n", " ").replace("-",' ').replace("_"," "))
+    #     # output['similarities'] = cosine_similarities
+    #     print('------x to array-------')
+    #     print(X.toarray())
+        
+        
+    #     print("X type:", type(X))
+    #     print("vectors type:",type(vectors))
+    #     return output
+
+    def tfidf_vectorizer_fast(self,X,vectors):
+        # X = scipy.sparse.load_npz('data/sparse_matrix.npz')
+        # vectors = pickle.load(open("vectorizer.pk", 'rb'))
         sim_vecs,cosine_similarities = self.calculate_similarity(X,vectors,self.query)
         output = self.df[self.df.index.isin(sim_vecs)]
         output['content'] = output['content'].apply(lambda x: x.replace("\n", " ").replace("-",' ').replace("_"," "))
@@ -150,6 +197,9 @@ class TFIDF:
     def vec_creator(dataset):
         vectorizer = TfidfVectorizer()
         X = vectorizer.fit_transform(dataset)
+        # with open('vectorizer.pk', 'wb') as f:
+        #     pickle.dump(vectorizer, f)
+        # f.close()
         return X,vectorizer
 
     @staticmethod
@@ -159,6 +209,8 @@ class TFIDF:
 
         # Vectorize the query to the same length as documents
         query_vec = vectorizor.transform(query)
+        
+        # exit(-1)
         # Compute the cosine similarity between query_vec and all the documents
         cosine_similarities = cosine_similarity(X,query_vec).flatten()
         # Sort the similar documents from the most similar to less similar and return the indices
@@ -169,22 +221,39 @@ class TFIDF:
     def get_links(df):
         return df['url'].tolist()
 
-    
-def load_docs(full_file_path):
-    file = Preprocessing(full_file_path)
-    file.parser()
-    df = file.transform_to_df(file.documents)
-    return df
+    @staticmethod
+    def get_titles(df):
+        return df['title'].tolist()
 
-def ir_tfidf(df,query):
+    
+# def load_docs(full_file_path):
+#     """Turns XML files to a dataframe"""
+#     file = Preprocessing(full_file_path)
+#     file.parser()
+#     df = file.transform_to_df(file.documents)
+#     # df.to_csv("all_articles.csv",sep=';',index=False)
+#     # df2 = pd.read_csv("all_articles.csv",sep=';')
+#     # print(df2)
+#     return df
+
+
+
+def ir_tfidf(df,query,X,vectors):
     # file = Preprocessing(full_file_path)
     # file.parser()
     # df = file.transform_to_df(file.documents)
     tfidf = TFIDF(df,query)
-    new_df = tfidf.tfidf_vectorizer()
+    print("STEP 1 ___________________")
+    
+    new_df = tfidf.tfidf_vectorizer_fast(X,vectors)
     links = tfidf.get_links(new_df)
-    print(links)
-    return links
+    titles = tfidf.get_titles(new_df)
+
+    
+    return links, titles
+
+
+
 
 
 if __name__ == "__main__":
