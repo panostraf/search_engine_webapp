@@ -118,11 +118,11 @@ class BertEmbendings:
       
     def sent_tokenize(self):
         self.df['content']= self.df['content'].apply(lambda x: x.replace("\n", " ").replace("-",' ').replace("_"," "))
-        self.df['senetences'] = self.df['content'].apply(lambda x: sent_tokenize(x))
+        self.df['sentences'] = self.df['content'].apply(lambda x: sent_tokenize(x))
         self.df = self.df.explode('sentences').reset_index(drop=True)
         self.df.drop_duplicates(inplace=True,subset=['sentences'])
         self.df['embendings'] = self.df['sentences'].apply(self.bert_embendings)
-        self.df.to_csv("content_with_embendings.csv";sep=';',index=False)
+        self.df.to_csv("content_with_embendings.csv",sep=';',index=False)
 
     @staticmethod
     def bert_embendings(content):
@@ -145,3 +145,6 @@ if __name__=='__main__':
     tfidf = TFIDF(df)
     tfidf.tfidf_vectorizer()
 
+    # Create Embendings and store to csv
+    bert = BertEmbendings(df)
+    bert.sent_tokenize()
