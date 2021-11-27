@@ -7,3 +7,6 @@ __pycache__/*
 __pycache__
 /venv
 /data
+all_data/
+/all_data
+Pipfile

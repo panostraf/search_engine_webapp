@@ -7,13 +7,18 @@
   <br>
   <a>results for: {{query}}</a>
   <br>
+  <a>Average Similarity: {{av_sim * 100}}%</a> 
+  <br>
+  <button type='submit' name = 'do_you_mean' value = '{{other_query}}'> do you mean {{other_query}}</button>
 </form>
 
-    {% for e, i in results.items() %}
+    {% for link, data in results.items() %}
       <div> 
-        <a> {{i}}</a>
+        <a> {{data[0]}}</a>
         <br>
-        <a href={{e}}> {{e}} <a>
+        <a href={{link}}> {{link}} <a>
+        <br>
+        <a>Similarity {{data[1]}}</a>
         <br>
         <!-- <a>was this helpful? </a>
           <form method="POST">
@@ -32,5 +37,12 @@
         <br>
       </div>
     {% endfor %}
+
+  
   
 </body>
+
+<footer>
+
+<a> Search Eninges Deree</a>
+</footer>

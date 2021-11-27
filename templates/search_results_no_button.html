@@ -1,0 +1,47 @@
+<body>
+  <form method="POST">
+    <label for="site-search">Search the site:</label>
+  <input type="search" id="site-search" name="q"
+         aria-label="Search through site content">
+  <button>Search</button>
+  <br>
+  <a>results for: {{query}}</a>
+  <br>
+  <a>Average Similarity: {{av_sim * 100}}%</a> 
+  <br>
+</form>
+
+    {% for link, data in results.items() %}
+      <div> 
+        <a> {{data[0]}}</a>
+        <br>
+        <a href={{link}}> {{link}} <a>
+        <br>
+        <a>Similarity {{data[1]}}</a>
+        <br>
+        <!-- <a>was this helpful? </a>
+          <form method="POST">
+             
+            <input type="button" id="use_yes" name="use_y"
+                  value = "YES">
+            
+            <input type="button" id="use_no" name="use_n"
+            value = "NO">
+
+            <br>
+            <a>results for: {{query}}</a>
+            <br>
+        </form> -->
+        <br>
+        <br>
+      </div>
+    {% endfor %}
+
+  
+  
+</body>
+
+<footer>
+
+<a> Search Eninges Deree</a>
+</footer>

@@ -1,4 +1,15 @@
 import re
+from spellchecker import SpellChecker
+from nltk import word_tokenize
+import nltk
+
+
+# nltk.download('wordnet')
+# nltk.download('punkt')
+# nltk.download('stopwords')
+# nltk.download('averaged_perceptron_tagger')
+
+
 # from sentence_transformers import SentenceTransformer
 # sbert_model = SentenceTransformer('bert-base-nli-max-tokens')
 # sbert_model = SentenceTransformer()
@@ -70,6 +81,39 @@ def replace_contractions(content):
         content = content.replace(key,value)
     return content 
 
+
+
+def spell_checking(text):
+    
+
+    spell = SpellChecker()
+    # To add words in spell checker
+    #spell.word_frequency.load_words(list of tokens of our content)
+    corrected=[]
+    tokens=word_tokenize(text)
+    for word in tokens:
+        #print(spell.candidates(word))
+        corrected.append(spell.correction(word))
+    strcorrected = ' '.join(map(str, corrected))
+
+    return strcorrected
+
+
+
+
+
+# Take misspleled text and return corrected text
+# def spell_checking(text):
+#     spell = SpellChecker()
+#     # To add words in spell checker
+#     #spell.word_frequency.load_words(list of tokens of our content)
+#     corrected=[]
+#     tokens=word_tokenize(text)
+#     for word in tokens:
+#         #print(spell.candidates(word))
+#         corrected.append(spell.correction(word))
+#     strcorrected = ' '.join(map(str, corrected))
+#     return strcorrected
 
 
 # def bert_embendings(content):

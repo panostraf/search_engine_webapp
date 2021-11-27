@@ -86,7 +86,6 @@ def calculate_similarity(X, vectorizor, query, top_k=20):
 
     # Vectorize the query to the same length as documents
     query_vec = vectorizor.transform(query)
-    print(query_vec)
     # Compute the cosine similarity between query_vec and all the documents
     cosine_similarities = cosine_similarity(X,query_vec).flatten()
     # Sort the similar documents from the most similar to less similar and return the indices
@@ -189,6 +188,7 @@ class TFIDF:
         sim_vecs,cosine_similarities = self.calculate_similarity(X,vectors,self.query)
         output = self.df[self.df.index.isin(sim_vecs)]
         output['content'] = output['content'].apply(lambda x: x.replace("\n", " ").replace("-",' ').replace("_"," "))
+        output['similarities'] = cosine_similarities
         return output
 
 
@@ -202,8 +202,10 @@ class TFIDF:
         # f.close()
         return X,vectorizer
 
+        
+
     @staticmethod
-    def calculate_similarity(X, vectorizor, query, top_k=20):
+    def calculate_similarity(X, vectorizor, query, top_k=50):
         """ Vectorizes the `query` via `vectorizor` and calculates the cosine similarity of
         the `query` and `X` (all the documents) and returns the `top_k` similar documents."""
 
@@ -215,7 +217,17 @@ class TFIDF:
         cosine_similarities = cosine_similarity(X,query_vec).flatten()
         # Sort the similar documents from the most similar to less similar and return the indices
         most_similar_doc_indices = np.argsort(cosine_similarities, axis=0)[:-top_k-1:-1]
-        return (most_similar_doc_indices, cosine_similarities)
+        # print(cosine_similarities[0])
+        # print(np.argsort(cosine_similarities, axis=0)[:-top_k-1:-1])
+
+        cosine_sims = [cosine_similarities[item] for item in np.argsort(cosine_similarities, axis=0)[:-top_k-1:-1]]
+        # for item in np.argsort(cosine_similarities, axis=0)[:-top_k-1:-1]:
+        #     print(cosine_similarities[item])
+        # print(cosine_sims)
+        
+        # for item in cosine_similarities:
+        #     print(item)
+        return (most_similar_doc_indices, cosine_sims)
 
     @staticmethod
     def get_links(df):
@@ -225,7 +237,9 @@ class TFIDF:
     def get_titles(df):
         return df['title'].tolist()
 
-    
+    @staticmethod
+    def get_similarities(df):
+        return df['similarities'].tolist()
 # def load_docs(full_file_path):
 #     """Turns XML files to a dataframe"""
 #     file = Preprocessing(full_file_path)
@@ -243,14 +257,15 @@ def ir_tfidf(df,query,X,vectors):
     # file.parser()
     # df = file.transform_to_df(file.documents)
     tfidf = TFIDF(df,query)
-    print("STEP 1 ___________________")
     
     new_df = tfidf.tfidf_vectorizer_fast(X,vectors)
     links = tfidf.get_links(new_df)
     titles = tfidf.get_titles(new_df)
+    similarities = tfidf.get_similarities(new_df)
 
     
-    return links, titles
+    return links, titles, similarities
+
 
 
 
