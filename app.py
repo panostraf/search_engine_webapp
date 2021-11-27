@@ -27,60 +27,44 @@ print("files have been loaded")
 def search():
     return render_template("search_bar.html")
 
+
 @app.route('/', methods=['POST',"GET"])
 @app.route('/search', methods=['POST',"GET"])
 def search_bar():
     query = request.form['q']
     other_q = functions.spell_checking(query)
-    
-    
-    
+    btn = "on"
 
     if request.method == "POST":
         if request.form.get("do_you_mean"):
-
+            print("\n\n\n ----------------  1")
+            btn = "off"
             query = request.form['do_you_mean']
-
-            links,titles,similarities = parser.ir_tfidf(documents,query,X,vectors)
-            similarities = [round(sim,2) for sim in similarities]
-
-            results = dict(zip(links,list(zip(titles,similarities))))
-
-            average_similarity = round(np.mean(similarities),2)
-
-            text = ""
-            for link,data in results.items():
-                title = data[0]
-                similarity = data[1]
-                text = text + f'{query};{title};{link};{similarity}\n'
-            with open("train_dataset.csv","a") as f:
-                f.write(text)
-
-            return render_template("search_results_no_button.html",results = results,query = query, similarity = similarities, av_sim = average_similarity)
-
-    
-    
-    links,titles,similarities = parser.ir_tfidf(documents,query,X,vectors)
-    similarities = [round(sim,2) for sim in similarities]
-
-    results = dict(zip(links,list(zip(titles,similarities))))
-
-    average_similarity = round(np.mean(similarities),2)
-
-    text = ""
-    for link,data in results.items():
-        title = data[0]
-        similarity = data[1]
-        text = text + f'{query};{title};{link};{similarity}\n'
-    with open("train_dataset.csv","a") as f:
-        f.write(text)
-    
-    if query != other_q:  
-        return render_template("search_results.html",results = results,query = query, similarity = similarities, av_sim = average_similarity,other_query=other_q)
+        else:
+            if query != other_q: 
+                print("\n\n\n ----------------  2")
+                btn = "on"
+            else:
+                print("\n\n\n ----------------  3")
+                btn = "off"
     else:
-        return render_template("search_results_no_button.html",results = results,query = query, similarity = similarities, av_sim = average_similarity)
+        if query != other_q: 
+            print("\n\n\n ----------------  2")
+            btn = "on"
+        else:
+            print("\n\n\n ----------------  3")
+            btn = "off"
+    results,query,similarities,average_similarity = parser.main(query,documents,X,vectors)
     
-        
+    return render_template("search_results.html",
+                            btn = btn, 
+                            results = results,
+                            query = query, 
+                            similarity = similarities, 
+                            av_sim = average_similarity,
+                            other_query=other_q)
+    
+
 
 
 if __name__=="__main__":

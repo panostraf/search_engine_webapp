@@ -266,7 +266,23 @@ def ir_tfidf(df,query,X,vectors):
     
     return links, titles, similarities
 
+def main(query,documents,X,vectors):
+    links,titles,similarities = ir_tfidf(documents,query,X,vectors)
+    similarities = [round(sim,2) for sim in similarities]
 
+    results = dict(zip(links,list(zip(titles,similarities))))
+
+    average_similarity = round(np.mean(similarities),2)
+
+    text = ""
+    for link,data in results.items():
+        title = data[0]
+        similarity = data[1]
+        text = text + f'{query};{title};{link};{similarity}\n'
+    with open("train_dataset.csv","a") as f:
+        f.write(text)
+
+    return results,query,similarities,average_similarity
 
 
 
