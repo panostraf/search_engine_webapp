@@ -2,7 +2,9 @@ import re
 from spellchecker import SpellChecker
 from nltk import word_tokenize
 import nltk
-
+from nltk.corpus import stopwords
+nltk.download('stopwords')
+from nltk.tokenize import word_tokenize
 
 # nltk.download('wordnet')
 # nltk.download('punkt')
@@ -28,14 +30,13 @@ def replace_dot(content):
             new_item3 = item.replace( "!", "! " )
             new_item4 = item.replace( "-", " " )
             new_item5 = item.replace( "_", " " )
+            new_item6 = item.replace("  "," ")
 
             content = content.replace(item, new_item1)
             content = content.replace(item, new_item2)
             content = content.replace(item, new_item3)
             content = content.replace(item, new_item4)
             content = content.replace(item, new_item5)
-    
-
     return content
 
 
@@ -84,8 +85,6 @@ def replace_contractions(content):
 
 
 def spell_checking(text):
-    
-
     spell = SpellChecker()
     # To add words in spell checker
     #spell.word_frequency.load_words(list of tokens of our content)
@@ -95,9 +94,17 @@ def spell_checking(text):
         #print(spell.candidates(word))
         corrected.append(spell.correction(word))
     strcorrected = ' '.join(map(str, corrected))
-
     return strcorrected
 
+
+def query_preprocess(text,stops):
+    text_tokens = word_tokenize(text)
+    tokens_without_sw = [word for word in text_tokens if not word in stops]
+    filtered_sentence = (" ").join(tokens_without_sw)
+    return filtered_sentence
+from nltk.corpus import stopwords
+nltk.download('stopwords')
+from nltk.tokenize import word_tokenize
 
 
 

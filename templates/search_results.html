@@ -10,8 +10,7 @@
         <br>
         <a>results for: {{query}}</a>
         <br>
-        <a>Average Similarity: {{av_sim * 100}}%</a> 
-        <br>
+        
         {% if btn == "on" %}
         <button type='submit' name = 'do_you_mean' value = '{{other_query}}'> do you mean {{other_query}}</button>
         {% endif %}
@@ -31,7 +30,7 @@
       </div>
     {% endfor %}
 
-  
+
   
 </body>
 
