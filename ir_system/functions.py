@@ -84,16 +84,25 @@ def replace_contractions(content):
 
 
 
-def spell_checking(text):
-    spell = SpellChecker()
-    # To add words in spell checker
-    #spell.word_frequency.load_words(list of tokens of our content)
+def spell_checking(text,extra_corpus):
+    print(text)
+    spell = SpellChecker(distance=3,)
+    spell.word_frequency.load_words(extra_corpus)
     corrected=[]
     tokens=word_tokenize(text)
+    spell.word_frequency.remove_words(['samson','hawe'])
+    print(spell['samsung'])
     for word in tokens:
+        if spell[word] == False:
+            corrected.append(spell.correction(word))
+            print(word,"---",spell.correction(word))
+        else:
+            corrected.append(word)
+        
         #print(spell.candidates(word))
-        corrected.append(spell.correction(word))
+        
     strcorrected = ' '.join(map(str, corrected))
+    print(strcorrected)
     return strcorrected
 
 
@@ -102,8 +111,84 @@ def query_preprocess(text,stops):
     tokens_without_sw = [word for word in text_tokens if not word in stops]
     filtered_sentence = (" ").join(tokens_without_sw)
     return filtered_sentence
+
+
+
+replacements = {
+"television":"tv",
+"tv":"television",
+"televisions":"tvs",
+"tvs":"televisons",
+"smartphone":"phone",
+"phone":"smartphone",
+"phones":"smartphones",
+"smartphones":"phones",
+"cellphone":"smartphone",
+"cellphones":"smartphones",
+"mobile phone":"smartphone",
+"mobile phones":"smartphones",
+"applications": "apps",
+"apps": "applications",
+"app":"application",
+"application":"app",
+"laptop":"notebook",
+"notebook":"laptop",
+"laptops":"notebooks",
+"notebooks":"laptops",
+"os":"operation system",
+"operation system":"os",
+"hdd":"hard drive disk",
+"hard drive disk":"hdd",
+"ssd":"solid-state drive",
+"solid-state drive":"ssd",
+"modem":"router",
+"router":"modem",
+"modems":"routers",
+"routers":"modems",
+"vr":"virtual reality",
+"virtual reality":"vr",
+"wireless":"bluetooth",
+"computer":"pc",
+"pc":"desktop",
+"motherboard":"mobo",
+"mobo":"motherboard",
+"processor":"cpu",
+"cpu":"processor",
+"graphic card":"gpu",
+"graphics card":"gpu",
+"gpu":"graphics card",
+"navigator":"gps",
+"gps":"navigator",
+"smartwatch":"smart watch",
+"smart watch":"smartwatch",
+"handsfree":"earphones",
+"camera":"videocamera",
+"desktop":"pc"
+}
+
+
+
+query = "the best"
+
+
+
+def synonyms_production(query):
+    query_words = word_tokenize(query)
+    queries = []
+    for word in query_words:
+        
+        if word in replacements.keys():
+            queries.append(re.sub(word,replacements[word],query))
+            continue
+        
+        
+    queries.append(query)
+    return queries
+
+
+
 from nltk.corpus import stopwords
-nltk.download('stopwords')
+# nltk.download('stopwords')
 from nltk.tokenize import word_tokenize
 
 
@@ -131,3 +216,6 @@ from nltk.tokenize import word_tokenize
 #     sentence_embeddings = sbert_model.encode(content)
 #     # print(sentence_embeddings)
 #     return sentence_embeddings
+
+if __name__=="__main__":
+    print(synonyms_production(query))

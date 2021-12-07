@@ -21,6 +21,7 @@ from ir_system.functions import *
 import pickle
 from scipy.sparse import csr_matrix
 import scipy
+import itertools
 
 
 path = "./data/scrapped_articles_new.xml"
@@ -91,7 +92,7 @@ class TFIDF:
         output['content'] = output['content'].apply(lambda x: x.replace("\n", " ").replace("-",' ').replace("_"," "))
         output['similarities'] = cosine_similarities
         output = output.sort_values(by='similarities',ascending=False)
-        print(output)
+        # print(output)
         return output
 
 
@@ -103,7 +104,7 @@ class TFIDF:
 
 
     @staticmethod
-    def calculate_similarity(X, vectorizor, query, top_k=50):
+    def calculate_similarity(X, vectorizor, query, top_k=20):
         """ Vectorizes the `query` via `vectorizor` and calculates the cosine similarity of
         the `query` and `X` (all the documents) and returns the `top_k` similar documents."""
 
@@ -139,46 +140,91 @@ def ir_tfidf(df,query,X,vectors):
     
 
 def main(query,documents,X,vectors):
-    links,titles,similarities = ir_tfidf(documents,query,X,vectors)
+
+    queries = functions.synonyms_production(query)
+    links,titles,similarities = [],[],[]
+    for q in queries:
+
+        l,t,s = ir_tfidf(documents,q,X,vectors)
+        links.append(l)
+        titles.append(t)
+        similarities.append(s)
+    
+
+    links = list(itertools.chain(*links))
+    titles = list(itertools.chain(*titles))
+    similarities = list(itertools.chain(*similarities))
+    
+    
+
+    temp_df = pd.DataFrame(list(zip(links, titles)),
+               columns =['links', 'titles'])
+    temp_df['similarities'] = similarities
+    temp_df = temp_df.sort_values(by='similarities',ascending=False)
+    print(temp_df)
+    temp_df.drop_duplicates(subset='links',inplace=True)
+    temp_df = temp_df[:20]
+    link = temp_df['links'].tolist()
+    title = temp_df['titles'].tolist()
+    similarities = temp_df['similarities'].tolist()
+
     similarities = [round(sim,2) for sim in similarities]
 
     results = dict(zip(links,list(zip(titles,similarities))))
 
-    average_similarity = round(np.mean(similarities),2)
+        
 
     text = ""
     for link,data in results.items():
         title = data[0]
         similarity = data[1]
         text = text + f'{query};{title};{link};{similarity}\n'
-    with open("dataset_removed_stops_tfidf.csv","a") as f:
+    with open("all_data/tfidf_percision_recall.csv","a") as f:
         f.write(text)
 
-    return results,query,similarities,average_similarity
+    return results,query,similarities,links
 
 
-def bert_similarities(query,df,bert_embedings,sbert_model,top_k=50):
+def bert_similarities(query,df,bert_embedings,sbert_model,reducer,tfidf_sims,top_k=10):
+    # print(tfidf_sims)
+    # print("-------ENCODING QUERY---------")
+    # bert_query = [sbert_model.encode(query)]
+    # print("bert_query",bert_query)
+    # # bert_query = np.reshape(bert_query, (-1, 2))
+    # bert_query = reducer.transform(bert_query)
+    # print('reduced:',bert_query)
+    # query_sm = csr_matrix(bert_query).toarray()
+    # print('sparse qyery:',query_sm)
+    # # query_sm = csr_matrix(reducer.fit_transform(bert_query))
+    # print("-----calculate_similarity-----")
     bert_query = sbert_model.encode(query)
-    query_sm = csr_matrix(bert_query)
+    query_sm = csr_matrix(bert_query).toarray()
+    bert_embedings = csr_matrix(bert_embedings).toarray()
     sim_sparse = cosine_similarity(bert_embedings, query_sm)
-
     most_similar_doc_indices = np.argsort(sim_sparse, axis=0)[:-top_k-1:-1]
     best_articles = [article for article in most_similar_doc_indices.flatten()]
     df['similarities'] = sim_sparse
+    df.reset_index(inplace=True)
     output = df[df.index.isin(best_articles)]
-    
     output = output.sort_values(by='similarities',ascending=False)
-    print(output)
+    output.drop_duplicates('url',inplace=True)
+    output = output.merge(tfidf_sims,on='url',how='left')
+    
     sentences = output['sentences'].tolist()
+    sents = []
+    for sent in sentences:
+        if len(sent)>150:
+            sent = sent[:150] + "..."
+        sents.append(sent)
     similarities = output['similarities'].tolist()
     links = output['url'].tolist()
-    return links, sentences, similarities
+    return links, sents, similarities
 
 
 
 
-def main_bert(query,documents,bert_embedings,sbert_model):
-    links,sentences,similarities = bert_similarities(query,documents,bert_embedings,sbert_model)
+def main_bert(query,documents,bert_embedings,sbert_model,reducer,tfidf_sims):
+    links,sentences,similarities = bert_similarities(query,documents,bert_embedings,sbert_model,reducer,tfidf_sims)
     similarities = [round(sim,2) for sim in similarities]
     results = dict(zip(links,list(zip(sentences,similarities))))
 
@@ -188,8 +234,9 @@ def main_bert(query,documents,bert_embedings,sbert_model):
         sentence = data[0]
         similarity = data[1]
         text = text + f'{query};{sentence};{link};{similarity}\n'
-    with open("train_dataset_bert.csv","a") as f:
+    with open("all_data/tfidf_bert_percision_recall.csv.csv","a") as f:
         f.write(text)
+    f.close()
 
     return results,query,similarities
 
