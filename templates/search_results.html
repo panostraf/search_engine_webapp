@@ -1,3 +1,7 @@
+<header>
+  <br>
+</header>
+
 <body>
 
   <form method="POST">
@@ -6,35 +10,48 @@
         <input type="search" id="site-search" name="q"
               aria-label="Search through site content">
         <button>Search</button>
-
+        
+        {% if btn == "on" %}
+        <br>
+        <button type='submit' name = 'do_you_mean' value = '{{other_query}}'> do you mean {{other_query}}</button>
+        {% endif %}
         <br>
         <a>results for: {{query}}</a>
         <br>
+        <a>{{n_results}} results in {{retreival_time}}s</a>
         
-        {% if btn == "on" %}
-        <button type='submit' name = 'do_you_mean' value = '{{other_query}}'> do you mean {{other_query}}</button>
-        {% endif %}
+        
   </form>
 
     <!-- Results (links titles etc) -->
+    <ul>
     {% for link, data in results.items() %}
-      <div> 
-        <a href={{link}}> {{link}} <a>
-        <br>
-        <a> {{data[0]}}</a>
-        <br>
-        <a>Similarity {{data[1]}}</a>
-        <br>
-        <br>
-        <br>
+      <li> 
+        <div>
+            <a href={{link}}> {{link}} <a>
+            <br>
+            <a> {{data[0]}}</a>
+            <br>
+            <a>Similarity {{data[1]}}</a>
+            <br>
+            <form method="POST">
+              <a> was this relevant</a> 
+              <button type='button' name = 'feedback' value = 'yes'> Yes</button>
+              <button type='button' name = 'feedback' value = 'no'> No</button>
+            </form>
+            <br>
+            <br>
       </div>
+    </li>
+      
     {% endfor %}
-
+</ul>
 
   
 </body>
 
-<footer>
+<!-- <footer>
 
 <a> Search Eninges Deree</a>
-</footer>
+<p>Search between {{n_articles}} pages from techradar.com, digitaltrends.com, tomsguide.com, techadvisor.com, cnet.com</p>
+</footer> -->

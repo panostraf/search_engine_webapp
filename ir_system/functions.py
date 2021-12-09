@@ -94,6 +94,7 @@ def spell_checking(text,extra_corpus):
     print(spell['samsung'])
     for word in tokens:
         if spell[word] == False:
+            print(spell[word])
             corrected.append(spell.correction(word))
             print(word,"---",spell.correction(word))
         else:

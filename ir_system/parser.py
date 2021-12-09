@@ -92,7 +92,7 @@ class TFIDF:
         output['content'] = output['content'].apply(lambda x: x.replace("\n", " ").replace("-",' ').replace("_"," "))
         output['similarities'] = cosine_similarities
         output = output.sort_values(by='similarities',ascending=False)
-        # print(output)
+        print(output)
         return output
 
 
@@ -161,7 +161,7 @@ def main(query,documents,X,vectors):
                columns =['links', 'titles'])
     temp_df['similarities'] = similarities
     temp_df = temp_df.sort_values(by='similarities',ascending=False)
-    print(temp_df)
+    # print(temp_df)
     temp_df.drop_duplicates(subset='links',inplace=True)
     temp_df = temp_df[:20]
     link = temp_df['links'].tolist()
@@ -186,30 +186,21 @@ def main(query,documents,X,vectors):
 
 
 def bert_similarities(query,df,bert_embedings,sbert_model,reducer,tfidf_sims,top_k=10):
-    # print(tfidf_sims)
-    # print("-------ENCODING QUERY---------")
-    # bert_query = [sbert_model.encode(query)]
-    # print("bert_query",bert_query)
-    # # bert_query = np.reshape(bert_query, (-1, 2))
-    # bert_query = reducer.transform(bert_query)
-    # print('reduced:',bert_query)
-    # query_sm = csr_matrix(bert_query).toarray()
-    # print('sparse qyery:',query_sm)
-    # # query_sm = csr_matrix(reducer.fit_transform(bert_query))
-    # print("-----calculate_similarity-----")
     bert_query = sbert_model.encode(query)
     query_sm = csr_matrix(bert_query).toarray()
     bert_embedings = csr_matrix(bert_embedings).toarray()
+    print("Calculating Similarity....\n\n\n")
     sim_sparse = cosine_similarity(bert_embedings, query_sm)
-    most_similar_doc_indices = np.argsort(sim_sparse, axis=0)[:-top_k-1:-1]
+    most_similar_doc_indices = np.argsort(sim_sparse, axis=0)#[:-top_k-1:-1]
     best_articles = [article for article in most_similar_doc_indices.flatten()]
     df['similarities'] = sim_sparse
     df.reset_index(inplace=True)
     output = df[df.index.isin(best_articles)]
     output = output.sort_values(by='similarities',ascending=False)
-    output.drop_duplicates('url',inplace=True)
+    output.drop_duplicates('url',inplace=True,keep='first')
     output = output.merge(tfidf_sims,on='url',how='left')
-    
+    output = output[:top_k]
+    output = output[output['similarities']>0.7]
     sentences = output['sentences'].tolist()
     sents = []
     for sent in sentences:
@@ -219,9 +210,6 @@ def bert_similarities(query,df,bert_embedings,sbert_model,reducer,tfidf_sims,top
     similarities = output['similarities'].tolist()
     links = output['url'].tolist()
     return links, sents, similarities
-
-
-
 
 def main_bert(query,documents,bert_embedings,sbert_model,reducer,tfidf_sims):
     links,sentences,similarities = bert_similarities(query,documents,bert_embedings,sbert_model,reducer,tfidf_sims)
@@ -240,7 +228,65 @@ def main_bert(query,documents,bert_embedings,sbert_model,reducer,tfidf_sims):
 
     return results,query,similarities
 
+def bert_similarities_umap(query,df,bert_embedings,sbert_model,reducer,tfidf_sims,top_k=20):
+    # print(tfidf_sims)
+    # print("-------ENCODING QUERY---------")
+    # bert_query = [sbert_model.encode(query)]
+    # print("bert_query",bert_query)
+    # # bert_query = np.reshape(bert_query, (-1, 2))
+    # bert_query = reducer.transform(bert_query)
+    # print('reduced:',bert_query)
+    # query_sm = csr_matrix(bert_query).toarray()
+    # print('sparse qyery:',query_sm)
+    # # query_sm = csr_matrix(reducer.fit_transform(bert_query))
+    # print("-----calculate_similarity-----")
+    bert_query = [sbert_model.encode(query)]
+    print("bert_embedings",bert_embedings,'\n\n\n\n')
+    # bert_query = np.reshape(bert_query, (-1, 2))
+    # print("bert _query_reshaped",bert_query,'\n\n\n\n')
+    bert_query = reducer.transform(bert_query)
+    print("bert _query_umaped",bert_query,'\n\n\n\n')
+    query_sm = csr_matrix(bert_query).toarray()
+    bert_embedings = csr_matrix(bert_embedings).toarray()
+    sim_sparse = cosine_similarity(bert_embedings, query_sm)
+    most_similar_doc_indices = np.argsort(sim_sparse, axis=0)[:-top_k-1:-1]
+    best_articles = [article for article in most_similar_doc_indices.flatten()]
+    df['similarities'] = sim_sparse
+    print(df['similarities'])
+    df.reset_index(inplace=True)
+    output = df[df.index.isin(best_articles)]
+    print("output\n\n\n")
+    print(output)
+    output = output.sort_values(by='similarities',ascending=False)
+    output.drop_duplicates('url',inplace=True)
+    output = output.merge(tfidf_sims,on='url',how='left')
+    
+    sentences = output['sentences'].tolist()
+    sents = []
+    for sent in sentences:
+        if len(sent)>150:
+            sent = sent[:150] + "..."
+        sents.append(sent)
+    similarities = output['similarities'].tolist()
+    links = output['url'].tolist()
+    return links, sents, similarities
 
+def main_bert_umap(query,documents,bert_embedings,sbert_model,reducer,tfidf_sims):
+    links,sentences,similarities = bert_similarities_umap(query,documents,bert_embedings,sbert_model,reducer,tfidf_sims)
+    similarities = [round(sim,2) for sim in similarities]
+    results = dict(zip(links,list(zip(sentences,similarities))))
+
+
+    text = ""
+    for link,data in results.items():
+        sentence = data[0]
+        similarity = data[1]
+        text = text + f'{query};{sentence};{link};{similarity}\n'
+    with open("all_data/tfidf_bert_percision_recall.csv.csv","a") as f:
+        f.write(text)
+    f.close()
+
+    return results,query,similarities
 
 if __name__ == "__main__":
 

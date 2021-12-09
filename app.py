@@ -14,6 +14,7 @@ from sentence_transformers import SentenceTransformer
 from scipy import sparse
 import umap
 import pickle
+import time
 
 app = Flask(__name__)
 
@@ -27,20 +28,20 @@ vectors = pickle.load(open("data/tfidf_model_removed_stops.pk", 'rb'))
 print("files have been loaded")
 # nltk.download('stopwords')
 stops = stopwords.words()
-# sbert = sbert_model = SentenceTransformer('bert-base-nli-max-tokens')
-# bert_embedings = sparse.load_npz('all_data/bert_embedings.npz')
+sbert = sbert_model = SentenceTransformer('bert-base-nli-max-tokens')
+bert_embedings = sparse.load_npz('all_data/bert_embedings.npz')
 # bert_embedings = sparse.load_npz('all_data/cp_embedings.npz')
-# document_sents = pd.read_csv('all_data/big_df_sents.csv',sep=';')
+document_sents = pd.read_csv('all_data/big_df_sents.csv',sep=';')
 corpus_list = list(pickle.load(open("all_data/words.pkl","rb")))
 
 
 
 
 
-# reducer = umap.UMAP(n_components=10,random_state=42)
-with open("all_data/reducer.pickle","rb") as f:
-    reducer = pickle.load(f)
-f.close()
+reducer = umap.UMAP(n_components=10,random_state=42)
+# with open("all_data/reducer_big.pickle","rb") as f:
+#     reducer = pickle.load(f)
+# f.close()
 
 print("\n\n\n")
 print("packages loaded")
@@ -54,6 +55,7 @@ def search():
 @app.route('/', methods=['POST',"GET"])
 @app.route('/search', methods=['POST',"GET"])
 def search_bar():
+    a = time.time()
     query = request.form['q']
     query_visual = query
     query = functions.query_preprocess(query,stops)
@@ -92,27 +94,44 @@ def search_bar():
 
 
     # bert filtered by tfidf (Hierarchical method)
-    # tfidf_df = pd.DataFrame(list(zip(links, similarities)),
-    #            columns =['url', 'tfidf_similarity'])
+    tfidf_df = pd.DataFrame(list(zip(links, similarities)),
+               columns =['url', 'tfidf_similarity'])
 
     
     
-    # filtered_embedings = bert_embedings.toarray()
-    # filtered_embedings = filtered_embedings[document_sents[document_sents['url'].isin(links)].index]
+    filtered_embedings = bert_embedings.toarray()
+    filtered_embedings = filtered_embedings[document_sents[document_sents['url'].isin(links)].index]
     
-    # filtered_sents = document_sents[document_sents['url'].isin(links)]
-    # results_bert,query,similarities_bert = parser.main_bert(query,filtered_sents,filtered_embedings,sbert_model,reducer,tfidf_df)
+    filtered_sents = document_sents[document_sents['url'].isin(links)]
+    results_bert,query,similarities_bert = parser.main_bert(query,filtered_sents,filtered_embedings,sbert_model,reducer,tfidf_df)
 
-    # results = results_bert
-    # similarities = similarities_bert
-    return render_template("search_results.html",
-                            btn = btn, 
-                            results = results,
-                            query = query_visual, 
-                            similarity = similarities, 
-                            # av_sim = average_similarity,
-                            other_query=other_q)
+    results = results_bert
+    similarities = similarities_bert
+    b= time.time()
+    total_time = str(round(b-a,2))
+
+
+
+    if len(similarities) > 1:
+        return render_template("search_results.html",
+                                btn = btn, 
+                                results = results,
+                                query = query_visual, 
+                                similarity = similarities, 
+                                # av_sim = average_similarity,
+                                other_query=other_q,
+                                retreival_time = total_time,
+                                n_results=str(len(similarities)),
+                                n_articles= len(documents))
+    else:
+        return render_template("search_bar_no_results_found.html",
+        other_query = other_q,
+        btn = btn,
+        query = query,
+        n_articles= len(documents))
     
+
+
 
 if __name__=="__main__":
     import cProfile
