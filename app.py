@@ -15,6 +15,9 @@ from scipy import sparse
 import umap
 import pickle
 import time
+from nltk.stem import WordNetLemmatizer
+from all_data.preprocessing import LemmaTokenizer
+# from ir_system.functions import LemmaTokenizer
 
 app = Flask(__name__)
 
@@ -22,24 +25,35 @@ app = Flask(__name__)
 path_file = "data/scrapped_articles_new.xml"
 # documents = parser.load_docs(path_file)
 documents = pd.read_csv('all_data/big_df.csv',sep=';')
+documents.reset_index(inplace=True)
+documents.rename(columns={"level_0":"Doc_ID"},inplace=True)
+doc_ids = documents[['Doc_ID',"url"]]
+# documents = documents
+# print(documents)
+# documents = documents.rename(columns={"url": "URL","level_0":"Doc_ID"},inplace=True)
 documents_loaded = ""
-X = scipy.sparse.load_npz('data/tfidf_vectors_removed_stops.npz')
-vectors = pickle.load(open("data/tfidf_model_removed_stops.pk", 'rb'))
-print("files have been loaded")
+
+X = scipy.sparse.load_npz('all_data/tfidf_vectors_removed_stops_lema.npz')
+vectors = pickle.load(open("all_data/tfidf_model_removed_stops_lema.pk", 'rb'))
 # nltk.download('stopwords')
 stops = stopwords.words()
 sbert = sbert_model = SentenceTransformer('bert-base-nli-max-tokens')
 bert_embedings = sparse.load_npz('all_data/bert_embedings.npz')
-# bert_embedings = sparse.load_npz('all_data/cp_embedings.npz')
+# bert_embedings = sparse.load_npz('all_data/cp_embedings350.npz')
 document_sents = pd.read_csv('all_data/big_df_sents.csv',sep=';')
 corpus_list = list(pickle.load(open("all_data/words.pkl","rb")))
 
+results_classifier = pickle.load(open("all_data/random_forest_classifier.pkl", 'rb'))
+
+pretrained_queries = pd.read_excel("all_data/pretrained_queries.xlsx")
+pretrained_queries = pretrained_queries[pretrained_queries['Relevance'] != 0]
+queries = [q.lower().strip() for q in pretrained_queries['Query']]
 
 
 
 
-reducer = umap.UMAP(n_components=10,random_state=42)
-# with open("all_data/reducer_big.pickle","rb") as f:
+# reducer = umap.UMAP(n_components=10,random_state=42)
+# with open("all_data/reducer350.pickle","rb") as f:
 #     reducer = pickle.load(f)
 # f.close()
 
@@ -66,53 +80,62 @@ def search_bar():
 
     if request.method == "POST":
         if request.form.get("do_you_mean"):
-            # print("\n\n\n ----------------  1")
             btn = "off"
             query = request.form['do_you_mean']
             query_visual = query
         else:
             if query != other_q: 
-                # print("\n\n\n ----------------  2")
                 btn = "on"
             else:
-                # print("\n\n\n ----------------  3")
                 btn = "off"
     else:
         if query != other_q: 
-            # print("\n\n\n ----------------  2")
             btn = "on"
         else:
-            # print("\n\n\n ----------------  3")
             btn = "off"
 
-    # Run this for TFIDF ranking only
-    results,query,similarities,links = parser.main(str(query).lower(),documents,X,vectors)
-    
-    #only bert
-    # results_bert,query,similarities_bert = parser.main_bert(query,document_sents,bert_embedings.toarray(),sbert_model,reducer,tfidf_df)
+    for q in queries:
+        print(q)
+    if query.lower().strip() in queries:
+        temp = pretrained_queries[pretrained_queries['Query'] == query]
+        links = temp['URL'].tolist()
+        similarities = temp['Similarity Bert'].tolist()
+        sentences = temp['Title'].tolist()
+        sents = []
+        for sent in sentences:
+            if len(sent)>150:
+                sent = sent[:150] + "..."
+            sents.append(sent)
 
+        similarities = [round(sim,2) for sim in similarities]
+        results = dict(zip(links,list(zip(sentences,similarities))))
 
+    else:
+        # Run this for TFIDF ranking only
+        results,query,similarities,links = parser.main(str(query).lower(),documents,X,vectors)
+        
+        #only bert
+        # results_bert,query,similarities_bert = parser.main_bert(query,document_sents,bert_embedings.toarray(),sbert_model,reducer,tfidf_df)
 
-    # bert filtered by tfidf (Hierarchical method)
-    tfidf_df = pd.DataFrame(list(zip(links, similarities)),
-               columns =['url', 'tfidf_similarity'])
+        # bert filtered by tfidf (Hierarchical method)
+        tfidf_df = pd.DataFrame(list(zip(links, similarities)),
+                columns =['url', 'tfidf_similarity'])
 
-    
-    
-    filtered_embedings = bert_embedings.toarray()
-    filtered_embedings = filtered_embedings[document_sents[document_sents['url'].isin(links)].index]
-    
-    filtered_sents = document_sents[document_sents['url'].isin(links)]
-    results_bert,query,similarities_bert = parser.main_bert(query,filtered_sents,filtered_embedings,sbert_model,reducer,tfidf_df)
+        filtered_embedings = bert_embedings.toarray()
+        filtered_embedings = filtered_embedings[document_sents[document_sents['url'].isin(links)].index]
+        
+        filtered_sents = document_sents[document_sents['url'].isin(links)]
+        results_bert,query,similarities_bert = parser.main_bert(query,filtered_sents,filtered_embedings,sbert_model,tfidf_df,results_classifier,doc_ids)
 
-    results = results_bert
-    similarities = similarities_bert
+        results = results_bert
+        similarities = similarities_bert
+        
+        
+
     b= time.time()
     total_time = str(round(b-a,2))
 
-
-
-    if len(similarities) > 1:
+    if len(similarities) >= 1:
         return render_template("search_results.html",
                                 btn = btn, 
                                 results = results,
@@ -135,7 +158,7 @@ def search_bar():
 
 if __name__=="__main__":
     import cProfile
-    app.run(debug=True)
+    # app.run(debug=True)
 
     # app.run(debug=True)#,host="0.0.0.0",port="8080")
-    # app.run(debug=True,host="0.0.0.0",port="8080")
+    app.run(debug=True,host="0.0.0.0",port="8080")

@@ -3,8 +3,10 @@ from spellchecker import SpellChecker
 from nltk import word_tokenize
 import nltk
 from nltk.corpus import stopwords
-nltk.download('stopwords')
+# nltk.download('stopwords')
 from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
+
 
 # nltk.download('wordnet')
 # nltk.download('punkt')
@@ -85,17 +87,15 @@ def replace_contractions(content):
 
 
 def spell_checking(text,extra_corpus):
-    print(text)
     spell = SpellChecker(distance=3,)
     spell.word_frequency.load_words(extra_corpus)
     corrected=[]
     tokens=word_tokenize(text)
     spell.word_frequency.remove_words(['samson','hawe'])
-    print(spell['samsung'])
     for word in tokens:
         if spell[word] == False:
-            print(spell[word])
             corrected.append(spell.correction(word))
+            print("correcting query")
             print(word,"---",spell.correction(word))
         else:
             corrected.append(word)
@@ -103,7 +103,7 @@ def spell_checking(text,extra_corpus):
         #print(spell.candidates(word))
         
     strcorrected = ' '.join(map(str, corrected))
-    print(strcorrected)
+    print("Output of spell checking:",strcorrected)
     return strcorrected
 
 
@@ -116,55 +116,55 @@ def query_preprocess(text,stops):
 
 
 replacements = {
-"television":"tv",
-"tv":"television",
-"televisions":"tvs",
-"tvs":"televisons",
-"smartphone":"phone",
-"phone":"smartphone",
-"phones":"smartphones",
-"smartphones":"phones",
-"cellphone":"smartphone",
-"cellphones":"smartphones",
-"mobile phone":"smartphone",
-"mobile phones":"smartphones",
-"applications": "apps",
-"apps": "applications",
-"app":"application",
-"application":"app",
-"laptop":"notebook",
-"notebook":"laptop",
-"laptops":"notebooks",
-"notebooks":"laptops",
-"os":"operation system",
-"operation system":"os",
-"hdd":"hard drive disk",
-"hard drive disk":"hdd",
-"ssd":"solid-state drive",
-"solid-state drive":"ssd",
-"modem":"router",
-"router":"modem",
-"modems":"routers",
-"routers":"modems",
-"vr":"virtual reality",
-"virtual reality":"vr",
-"wireless":"bluetooth",
-"computer":"pc",
-"pc":"desktop",
-"motherboard":"mobo",
-"mobo":"motherboard",
-"processor":"cpu",
-"cpu":"processor",
-"graphic card":"gpu",
-"graphics card":"gpu",
+"television":["tv","smart-tv","smart tv","television","tvs","televisions"],
+"tv":["television","smart-tv","smart tv","television","tvs","televisions"],
+"televisions":["television","smart-tv","smart tv","television","tvs","televisions","tv"],
+"smartphone":["phone","cell phones","cell phone","smart phone","smart-phone","android phone"],
+"phone":["smartphone","cell phones","cell phone","smart phone","smart-phone","android phone"],
+"cellphone":["smartphone","cell phones","cell phone","smart phone","smart-phone","android phone"],
+"mobile phone":["smartphone","cell phones","cell phone","smart phone","smart-phone","android phone"],
+"mobile phones":["smartphone","cell phones","cell phone","smart phone","smart-phone","android phone"],
+"applications": ["apps","applications","app"],
+"apps": ["applications","app",'application'],
+"app":["applications","app",'application'],
+"application":["applications","app",'application'],
+"laptop":["notebook"],
+"notebook":["laptop"],
+"laptops":["notebooks"],
+"notebooks":["laptops"],
+"os":["operation system"],
+"operation system":["os"],
+"hdd":["hard drive disk"],
+"hard drive disk":["hdd"],
+"ssd":["solid-state drive","ssd","solid state drive"],
+"solid-state drive":["ssd"],
+"modem":["router"],
+"router":["modem"],
+"modems":["routers"],
+"routers":["modems"],
+"vr":["virtual reality"],
+"virtual reality":["vr"],
+"wireless":["bluetooth"],
+"computer":["pc"],
+"pc":["desktop"],
+"motherboard":["mobo"],
+"mobo":["motherboard"],
+"processor":["cpu"],
+"cpu":["processor"],
+"graphic card":["gpu"],
+"graphics card":["gpu"],
 "gpu":"graphics card",
-"navigator":"gps",
-"gps":"navigator",
-"smartwatch":"smart watch",
-"smart watch":"smartwatch",
-"handsfree":"earphones",
-"camera":"videocamera",
-"desktop":"pc"
+"navigator":["gps","navigation system","geo loc system","navigation"],
+"gps":["navigator","navigation system","geo loc system","navigation"],
+"smartwatch":["smart watch","watch os","smart-watch"],
+"smart watch":["smartwatch"],
+"handsfree":["earphones","wireless headphones"],
+"camera":["videocamera","ip camera"],
+"desktop":["pc"],
+"printer":["3d printer","printers","scanner","scanners"],
+"scanner":["3d printer","printer","printers","scanner","scanners"],
+"3d printer":["3d-printer","scanner","printers","scanner","scanners"]
+
 }
 
 
@@ -173,7 +173,7 @@ query = "the best"
 
 
 
-def synonyms_production(query):
+def synonyms_production_old(query):
     query_words = word_tokenize(query)
     queries = []
     for word in query_words:
@@ -186,12 +186,31 @@ def synonyms_production(query):
     queries.append(query)
     return queries
 
+def synonyms_production(query):
+    query_words = word_tokenize(query)
+    queries = []
+    for word in query_words:
+        if word in replacements.keys():
+            for item in replacements[word]:
+                queries.append(re.sub(word,item,query))
+                continue
+    queries.append(query)
+    return queries
+    
+
 
 
 from nltk.corpus import stopwords
 # nltk.download('stopwords')
 from nltk.tokenize import word_tokenize
 
+
+class LemmaTokenizer:
+    ignore_tokens = [',', '.', ';', ':', '"', '``', "''", '`']
+    def __init__(self):
+        self.wnl = WordNetLemmatizer()
+    def __call__(self, doc):
+        return [self.wnl.lemmatize(t) for t in word_tokenize(doc) if t not in self.ignore_tokens]
 
 
 
