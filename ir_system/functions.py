@@ -6,6 +6,9 @@ from nltk.corpus import stopwords
 # nltk.download('stopwords')
 from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
+from nltk.corpus import stopwords
+# nltk.download('stopwords')
+from nltk.tokenize import word_tokenize
 
 
 # nltk.download('wordnet')
@@ -87,6 +90,9 @@ def replace_contractions(content):
 
 
 def spell_checking(text,extra_corpus):
+    # spell checking 
+    # inputs the query (text) and bag of words (extra_corpus)
+    # returns a corrected query
     spell = SpellChecker(distance=3,)
     spell.word_frequency.load_words(extra_corpus)
     corrected=[]
@@ -99,15 +105,15 @@ def spell_checking(text,extra_corpus):
             print(word,"---",spell.correction(word))
         else:
             corrected.append(word)
-        
         #print(spell.candidates(word))
-        
     strcorrected = ' '.join(map(str, corrected))
     print("Output of spell checking:",strcorrected)
     return strcorrected
 
 
 def query_preprocess(text,stops):
+    # remove stopwords from query
+    # returns proccesed query
     text_tokens = word_tokenize(text)
     tokens_without_sw = [word for word in text_tokens if not word in stops]
     filtered_sentence = (" ").join(tokens_without_sw)
@@ -169,10 +175,6 @@ replacements = {
 
 
 
-query = "the best"
-
-
-
 def synonyms_production_old(query):
     query_words = word_tokenize(query)
     queries = []
@@ -187,6 +189,9 @@ def synonyms_production_old(query):
     return queries
 
 def synonyms_production(query):
+    # Query expansion
+    # creates a list of queries by replacacing every word it founds
+    # on the custom replacements keys with every value
     query_words = word_tokenize(query)
     queries = []
     for word in query_words:
@@ -200,9 +205,7 @@ def synonyms_production(query):
 
 
 
-from nltk.corpus import stopwords
-# nltk.download('stopwords')
-from nltk.tokenize import word_tokenize
+
 
 
 class LemmaTokenizer:
@@ -214,28 +217,6 @@ class LemmaTokenizer:
 
 
 
-# Take misspleled text and return corrected text
-# def spell_checking(text):
-#     spell = SpellChecker()
-#     # To add words in spell checker
-#     #spell.word_frequency.load_words(list of tokens of our content)
-#     corrected=[]
-#     tokens=word_tokenize(text)
-#     for word in tokens:
-#         #print(spell.candidates(word))
-#         corrected.append(spell.correction(word))
-#     strcorrected = ' '.join(map(str, corrected))
-#     return strcorrected
-
-
-# def bert_embendings(content):
-    
-#     # Input sentence
-#     # output vectorized sentence [array with bert embendings]  
-#     # print(content) 
-#     sentence_embeddings = sbert_model.encode(content)
-#     # print(sentence_embeddings)
-#     return sentence_embeddings
-
 if __name__=="__main__":
+    query = "the best"
     print(synonyms_production(query))

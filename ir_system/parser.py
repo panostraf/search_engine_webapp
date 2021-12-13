@@ -28,6 +28,7 @@ path = "./data/scrapped_articles_new.xml"
 # query = "phone with large ram"
 
 class TFIDF:
+    # Class to calculate the cosine similarity using tf-idf
     def __init__(self,df,query):
         self.df = df
         self.query = [query]
@@ -38,20 +39,22 @@ class TFIDF:
         output['content'] = output['content'].apply(lambda x: x.replace("\n", " ").replace("-",' ').replace("_"," "))
         output['similarities'] = cosine_similarities
         output = output.sort_values(by='similarities',ascending=False)
-
+        print("TFIDF DOC RANKING")
+        print(output)
         return output
 
     @staticmethod
     def vec_creator(dataset):
+        # this is an old function and not in use anymore
+        # It will calculate tfidf for the corpus
         vectorizer = TfidfVectorizer()
         X = vectorizer.fit_transform(dataset)
         return X,vectorizer
 
     @staticmethod
-    def calculate_similarity(X, vectorizor, query, top_k=20):
-        """ Vectorizes the `query` via `vectorizor` and calculates the cosine similarity of
-        the `query` and `X` (all the documents) and returns the `top_k` similar documents."""
-
+    def calculate_similarity(X, vectorizor, query, top_k=10):
+        # vectorize query using the model and calculate the similarity
+        # returns the top n articles
         query_vec = vectorizor.transform(query)
         cosine_similarities = cosine_similarity(X,query_vec).flatten()
         most_similar_doc_indices = np.argsort(cosine_similarities, axis=0)[:-top_k-1:-1]
@@ -72,6 +75,8 @@ class TFIDF:
 
 
 def ir_tfidf(df,query,X,vectors):
+    # It uses the tfidf class from above
+    # this function is meant to be called from main
     tfidf = TFIDF(df,query)
     new_df = tfidf.tfidf_vectorizer_fast(X,vectors)
     links = tfidf.get_links(new_df)
@@ -80,6 +85,11 @@ def ir_tfidf(df,query,X,vectors):
     return links, titles, similarities   
 
 def main(query,documents,X,vectors):
+    # This is the class that the flask app will call 
+    # given a query it expanded and search using tfidf 
+    # for a list of queries that it creates
+    # Then it will sort all those queries and 
+    # keep the most similar
     queries = functions.synonyms_production(query)
     links,titles,similarities = [],[],[]
     for q in queries:
@@ -113,22 +123,27 @@ def main(query,documents,X,vectors):
             break
     # with open("all_data/test_set_tfidf.csv","a") as f:
     #     f.write(text)
-
     return results,query,similarities,links
 
 
-def bert_similarities(query,df,bert_embedings,sbert_model,tfidf_sims,results_classifier,doc_ids,top_k=10):
+def bert_similarities(query,df,bert_embedings,sbert_model,tfidf_sims,results_classifier,doc_ids,top_k=5):
+    # It encodes the query and calculates similarity with sents
+    # returns the articles with the most relevant sentences
+    # Then it uses the classifier to predict the relevance
+    # and excludes non relevant documents
+    # Returns list of links sentences and similarities of the n most similar docs
     bert_query = sbert_model.encode(query)
     query_sm = csr_matrix(bert_query).toarray()
     bert_embedings = csr_matrix(bert_embedings).toarray()
-    sim_sparse = cosine_similarity(bert_embedings, query_sm)
+    sim_sparse = cosine_similarity(bert_embedings, query_sm) # calc similarity
     most_similar_doc_indices = np.argsort(sim_sparse, axis=0)[::-1]#[:-top_k-1:-1]
     best_articles = [article for article in most_similar_doc_indices.flatten()]
     df['similarities'] = sim_sparse
     df.reset_index(inplace=True)
     output = df[df.index.isin(best_articles)]
     output = output.sort_values(by='similarities',ascending=False)
-    
+    print("BERT DOC RANKING with duplicates")
+    print(output)
     output.drop_duplicates('url',inplace=True,keep='first')
     output = output[:top_k]
     output = output.merge(tfidf_sims,on='url',how='left')
@@ -141,9 +156,11 @@ def bert_similarities(query,df,bert_embedings,sbert_model,tfidf_sims,results_cla
     output['similarities'] = output['similarities'].astype("float32")
     output['tfidf_similarity'] = output['tfidf_similarity'].astype("float32")
     output['Doc_ID'] = output['Doc_ID'].astype("int")
-    
+    print("BERT DOC RANKING unique")
+    print(output)
     data = results_classifier.predict(output[["Doc_ID","similarities","tfidf_similarity"]].values)
     output['relevance'] = data
+    
     print("articles that will be excluded:")
     print(output[output['relevance'] == 0])
     output = output[output['relevance'] != 0]
@@ -162,11 +179,12 @@ def bert_similarities(query,df,bert_embedings,sbert_model,tfidf_sims,results_cla
 
 
 def main_bert(query,documents,bert_embedings,sbert_model,tfidf_sims,results_classifier,doc_ids):
+    # this is the function that flask app calls to calculate similarity using bert
+    # It uses the function bert_similarities (for organisation puproses)
+    # returns results(dict of sentences[value] and similarities[value] for each like[key])
     links,sentences,similarities = bert_similarities(query,documents,bert_embedings,sbert_model,tfidf_sims,results_classifier,doc_ids)
     similarities = [round(sim,2) for sim in similarities]
     results = dict(zip(links,list(zip(sentences,similarities))))
-
-
     text = ""
     for link,data in results.items():
         sentence = data[0]
@@ -179,6 +197,9 @@ def main_bert(query,documents,bert_embedings,sbert_model,tfidf_sims,results_clas
     return results,query,similarities
 
 def bert_similarities_umap(query,df,bert_embedings,sbert_model,reducer,tfidf_sims,top_k=5):
+    # Variation of simple bert function but uses embedings with less dimensions
+    # Non in use and the classifier has is not present here
+    # Also recommend not to use this function, provides poor results
     bert_query = [sbert_model.encode(query)]
     bert_query = reducer.transform(bert_query)
     query_sm = csr_matrix(bert_query).toarray()
@@ -206,6 +227,9 @@ def bert_similarities_umap(query,df,bert_embedings,sbert_model,reducer,tfidf_sim
     return links, sents, similarities
 
 def main_bert_umap(query,documents,bert_embedings,sbert_model,reducer,tfidf_sims):
+    # Variation of simple bert function but uses embedings with less dimensions
+    # Non in use and the classifier has is not present here
+    # Also recommend not to use this function, provides poor results
     links,sentences,similarities = bert_similarities_umap(query,documents,bert_embedings,sbert_model,reducer,tfidf_sims)
     similarities = [round(sim,2) for sim in similarities]
     results = dict(zip(links,list(zip(sentences,similarities))))

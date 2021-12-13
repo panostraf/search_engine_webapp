@@ -19,19 +19,23 @@ from nltk.stem import WordNetLemmatizer
 from all_data.preprocessing import LemmaTokenizer
 # from ir_system.functions import LemmaTokenizer
 
+# Initializing flask object
 app = Flask(__name__)
 
-# read all files to avoid calculations later on
+
+# Load in memory all pretrained models
+# and all datasets since there is not a database to link them
+# This helps in computations, since we avoid calculating tfidf 
+# and bert embedings while the user provides a query
+
 path_file = "data/scrapped_articles_new.xml"
-# documents = parser.load_docs(path_file)
 documents = pd.read_csv('all_data/big_df.csv',sep=';')
 documents.reset_index(inplace=True)
 documents.rename(columns={"level_0":"Doc_ID"},inplace=True)
 doc_ids = documents[['Doc_ID',"url"]]
-# documents = documents
 # print(documents)
 # documents = documents.rename(columns={"url": "URL","level_0":"Doc_ID"},inplace=True)
-documents_loaded = ""
+# documents_loaded = ""
 
 X = scipy.sparse.load_npz('all_data/tfidf_vectors_removed_stops_lema.npz')
 vectors = pickle.load(open("all_data/tfidf_model_removed_stops_lema.pk", 'rb'))
@@ -53,6 +57,7 @@ queries = [q.lower().strip() for q in pretrained_queries['Query']]
 
 
 # reducer = umap.UMAP(n_components=10,random_state=42)
+# # this is the bert embedings with umap reduced to 350 dimensions
 # with open("all_data/reducer350.pickle","rb") as f:
 #     reducer = pickle.load(f)
 # f.close()
@@ -71,13 +76,15 @@ def search():
 def search_bar():
     a = time.time()
     query = request.form['q']
+    query_for_bert = query
     query_visual = query
     query = functions.query_preprocess(query,stops)
     other_q = functions.spell_checking(query,corpus_list)
     
 
     btn = "on"
-
+    # check if user pressed the "do you mean button"
+    # If true we need to change the query to the spell checked
     if request.method == "POST":
         if request.form.get("do_you_mean"):
             btn = "off"
@@ -114,8 +121,9 @@ def search_bar():
         # Run this for TFIDF ranking only
         results,query,similarities,links = parser.main(str(query).lower(),documents,X,vectors)
         
-        #only bert
-        # results_bert,query,similarities_bert = parser.main_bert(query,document_sents,bert_embedings.toarray(),sbert_model,reducer,tfidf_df)
+        # to run using only bert comment the line above and the rest of the lines in the if statement
+        # Uncomment the next line
+        # results_bert,query,similarities_bert = parser.main_bert(query,filtered_sents,filtered_embedings,sbert_model,tfidf_df,results_classifier,doc_ids)
 
         # bert filtered by tfidf (Hierarchical method)
         tfidf_df = pd.DataFrame(list(zip(links, similarities)),
@@ -125,7 +133,7 @@ def search_bar():
         filtered_embedings = filtered_embedings[document_sents[document_sents['url'].isin(links)].index]
         
         filtered_sents = document_sents[document_sents['url'].isin(links)]
-        results_bert,query,similarities_bert = parser.main_bert(query,filtered_sents,filtered_embedings,sbert_model,tfidf_df,results_classifier,doc_ids)
+        results_bert,query,similarities_bert = parser.main_bert(query_for_bert,filtered_sents,filtered_embedings,sbert_model,tfidf_df,results_classifier,doc_ids)
 
         results = results_bert
         similarities = similarities_bert
@@ -136,6 +144,7 @@ def search_bar():
     total_time = str(round(b-a,2))
 
     if len(similarities) >= 1:
+        # render this template if there are results to show
         return render_template("search_results.html",
                                 btn = btn, 
                                 results = results,
@@ -147,6 +156,7 @@ def search_bar():
                                 n_results=str(len(similarities)),
                                 n_articles= len(documents))
     else:
+        # render this template if no results returned
         return render_template("search_bar_no_results_found.html",
         other_query = other_q,
         btn = btn,
@@ -160,5 +170,5 @@ if __name__=="__main__":
     import cProfile
     # app.run(debug=True)
 
-    # app.run(debug=True)#,host="0.0.0.0",port="8080")
-    app.run(debug=True,host="0.0.0.0",port="8080")
+    app.run(debug=True,host="0.0.0.0",port="8080") 
+    # using this all other devices in the same network can access the website
