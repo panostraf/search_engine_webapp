@@ -18,7 +18,7 @@ import time
 from nltk.stem import WordNetLemmatizer
 from all_data.preprocessing import LemmaTokenizer
 # from ir_system.functions import LemmaTokenizer
-
+print("starting")
 # Initializing flask object
 app = Flask(__name__)
 
@@ -168,7 +168,7 @@ def search_bar():
 
 if __name__=="__main__":
     import cProfile
-    # app.run(debug=True)
+    app.run(debug=True)
 
-    app.run(debug=True,host="0.0.0.0",port="8080") 
+    # app.run(debug=True,host="0.0.0.0",port="8080") 
     # using this all other devices in the same network can access the website
